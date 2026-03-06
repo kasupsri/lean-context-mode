@@ -66,6 +66,21 @@ func BuildMCPServer(svc *Service, version string) *mcp.Server {
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}}, out, nil
 	})
 
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "cache.clean",
+		Description: "Clean cache entries for the current workspace root",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in CacheCleanInput) (*mcp.CallToolResult, CacheCleanOutput, error) {
+		out, err := svc.CacheClean(ctx, in)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "error: " + err.Error()}},
+				IsError: true,
+			}, CacheCleanOutput{}, nil
+		}
+		text := compactJSON(out)
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}}, out, nil
+	})
+
 	return server
 }
 

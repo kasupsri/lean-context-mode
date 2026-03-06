@@ -226,6 +226,12 @@ type ChangesFocusInput struct {
 	WorkspaceRoot   string `json:"workspace_root,omitempty" jsonschema:"Optional workspace root override (must be inside allowed roots)"`
 }
 
+type CacheCleanInput struct {
+	WorkspaceRoot string `json:"workspace_root,omitempty" jsonschema:"Optional workspace root override (must be inside allowed roots)"`
+	Mode          string `json:"mode,omitempty" jsonschema:"Cleanup mode: expired (default) or all"`
+	MaxAgeHours   int    `json:"max_age_hours,omitempty" jsonschema:"Max entry age in hours for mode=expired (default from env or 168)"`
+}
+
 type CodeSymbolsOutput struct {
 	Symbols []SymbolRef `json:"symbols"`
 	Total   int         `json:"total"`
@@ -244,4 +250,16 @@ type WorkspaceRootSetInput struct {
 type WorkspaceRootOutput struct {
 	ActiveRoot   string   `json:"active_root"`
 	AllowedRoots []string `json:"allowed_roots"`
+}
+
+type CacheCleanOutput struct {
+	Root               string    `json:"root"`
+	Mode               string    `json:"mode"`
+	MaxAgeHours        int       `json:"max_age_hours,omitempty"`
+	SnippetsRemoved    int       `json:"snippets_removed"`
+	SummariesRemoved   int       `json:"summaries_removed"`
+	SnippetsRemaining  int       `json:"snippets_remaining"`
+	SummariesRemaining int       `json:"summaries_remaining"`
+	CacheFile          string    `json:"cache_file"`
+	CleanedAt          time.Time `json:"cleaned_at"`
 }

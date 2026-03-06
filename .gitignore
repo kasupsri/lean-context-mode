@@ -2,3 +2,7 @@
 *.exe
 .lean-context-mode/
 /tmp/
+.tmp/
+.gocache/
+.tmp_run_*.cmd
+.tmp_*.cmd

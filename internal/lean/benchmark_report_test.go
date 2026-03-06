@@ -118,7 +118,7 @@ func TestBenchmarkWorkspaceRepos(t *testing.T) {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	outPath := filepath.Join(outDir, "results.json")
+	outPath := filepath.Join(outDir, "workspace-results.json")
 	if err := os.WriteFile(outPath, b, 0o644); err != nil {
 		t.Fatal(err)
 	}

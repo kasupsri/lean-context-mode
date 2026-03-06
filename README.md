@@ -22,6 +22,7 @@ Primary goals:
 - `code.snippet`
 - `repo.map`
 - `changes.focus`
+- `cache.clean`
 - `workspace.root.get`
 - `workspace.root.set`
 
@@ -85,6 +86,20 @@ Tracked:
 - bytes read
 - tokens returned/saved
 
+Cache lifecycle:
+- default mode is `ephemeral`: cache is cleared after each request to stay lightweight
+- optional bounded mode:
+  - set `LCM_CACHE_MODE=bounded`
+  - entries are then age-pruned on startup and periodically during writes
+  - default max age in bounded mode: `168` hours (7 days)
+  - override with `LCM_CACHE_MAX_AGE_HOURS` (for example `72`), or set `0` to disable age pruning
+
+MCP cache cleanup tool:
+- call `cache.clean` with:
+  - `mode: "expired"` (default) to delete stale entries
+  - `mode: "all"` to clear the cache fully
+  - optional `max_age_hours` for `expired` mode
+
 Stats command:
 
 ```bash
@@ -104,24 +119,24 @@ Outputs:
 
 ### Build (PowerShell)
 ```powershell
-cd "C:\Work\Kasup\Context Mode\lean-context-mode"
+cd "C:\path\to\lean-context-mode"
 go build -o lean-context-mode.exe .\cmd\lean-context-mode
 ```
 
 ### Build (cmd.exe)
 ```bat
-cd /d "C:\Work\Kasup\Context Mode\lean-context-mode"
+cd /d "C:\path\to\lean-context-mode"
 go build -o lean-context-mode.exe .\cmd\lean-context-mode
 ```
 
 ### Local sanity check
 ```powershell
-.\lean-context-mode.exe stats --root "C:\Work\Kasup\Context Mode\lean-context-mode"
+.\lean-context-mode.exe stats --root "C:\path\to\lean-context-mode"
 ```
 
 ### Run MCP server (stdio)
 ```powershell
-.\lean-context-mode.exe serve --root "C:\Work\Kasup\Context Mode\<your-workspace>"
+.\lean-context-mode.exe serve --root "C:\path\to\your-workspace"
 ```
 
 `serve` is a stdio MCP server and is intended to be started by Cursor/Codex/Claude MCP.  
@@ -129,7 +144,7 @@ If stdin closes, the process exits.
 
 ### Run without building
 ```powershell
-go run .\cmd\lean-context-mode serve --root "C:\Work\Kasup\Context Mode\<your-workspace>"
+go run .\cmd\lean-context-mode serve --root "C:\path\to\your-workspace"
 ```
 
 ### Use environment variable for root
@@ -143,14 +158,14 @@ Format: semicolon/comma separated absolute paths.
 
 PowerShell:
 ```powershell
-$env:LCM_ROOT = "C:\Work\Kasup\Context Mode\context-mode"
+$env:LCM_ROOT = "C:\path\to\your-workspace"
 .\lean-context-mode.exe serve
 .\lean-context-mode.exe stats
 ```
 
 cmd.exe:
 ```bat
-set LCM_ROOT=C:\Work\Kasup\Context Mode\context-mode
+set LCM_ROOT=C:\path\to\your-workspace
 lean-context-mode.exe serve
 lean-context-mode.exe stats
 ```
@@ -164,11 +179,11 @@ Included scripts:
 
 Examples:
 ```bat
-cd /d "C:\Work\Kasup\Context Mode\lean-context-mode"
+cd /d "C:\path\to\lean-context-mode"
 go build -o lean-context-mode.exe .\cmd\lean-context-mode
 
-scripts\set-root.bat "C:\Work\Kasup\Context Mode\context-mode"
-scripts\set-allowed-roots.bat "C:\Work\Kasup\Context Mode\workspace-a;C:\Work\Kasup\Context Mode\workspace-b"
+scripts\set-root.bat "C:\path\to\workspace-a"
+scripts\set-allowed-roots.bat "C:\path\to\workspace-a;C:\path\to\workspace-b"
 scripts\stats.bat
 scripts\serve.bat
 ```
@@ -197,8 +212,8 @@ Both examples call `scripts\serve.bat` via `cmd /c`.
 Use the helper script to install MCP config and set workspace root in one step:
 
 ```bat
-cd /d "C:\Work\Kasup\Context Mode\lean-context-mode"
-scripts\install-vscode-mcp.bat "C:\Work\Kasup\Context Mode\context-mode"
+cd /d "C:\path\to\lean-context-mode"
+scripts\install-vscode-mcp.bat "C:\path\to\your-workspace"
 ```
 
 What this script does:
@@ -231,7 +246,7 @@ docker run --rm -v "$PWD":/src -w /src golang:1.25 go test ./...
 Run synthetic benchmarks (always available):
 
 ```bash
-go test -run '^$' -bench Benchmark -benchmem ./internal/lean
+go test -run=DO_NOT_MATCH -bench Benchmark -benchmem ./internal/lean
 ```
 
 ## GitHub Pipelines
@@ -252,20 +267,20 @@ go test -run '^$' -bench Benchmark -benchmem ./internal/lean
 Lean Context Mode synthetic benchmark snapshot (`benchmarks/results.json`):
 
 - `BenchmarkContextPack-16`
-  - iterations: `152`
-  - latency: `7.644 ms/op`
-  - memory: `823,210 B/op`
-  - allocations: `2,464 allocs/op`
+  - iterations: `3`
+  - latency: `345.994 ms/op`
+  - memory: `1,556,522 B/op`
+  - allocations: `7,041 allocs/op`
 - `BenchmarkCodeSymbols-16`
-  - iterations: `9,400`
-  - latency: `0.124 ms/op`
-  - memory: `149,296 B/op`
+  - iterations: `9,165`
+  - latency: `0.115 ms/op`
+  - memory: `149,298 B/op`
   - allocations: `871 allocs/op`
 
 Reproduce benchmark (native):
 
 ```bash
-go test -run '^$' -bench Benchmark -benchmem ./internal/lean
+go test -run=DO_NOT_MATCH -bench Benchmark -benchmem ./internal/lean
 ```
 
 Reproduce benchmark (Docker):
@@ -275,7 +290,7 @@ docker run --rm \
   -v "$PWD":/src \
   -w /src \
   golang:1.25 \
-  go test -run '^$' -bench Benchmark -benchmem ./internal/lean
+  go test -run=DO_NOT_MATCH -bench Benchmark -benchmem ./internal/lean
 ```
 
 ## Project Structure

@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-03-06T01:39:22Z",
+  "generated_at": "2026-03-06T01:50:41Z",
   "project": "lean-context-mode",
-  "benchmark_command": "go test -run '^$' -bench Benchmark -benchmem ./internal/lean",
+  "benchmark_command": "go test -run=DO_NOT_MATCH -bench Benchmark -benchmem ./internal/lean",
   "environment": {
-    "goos": "linux",
+    "goos": "windows",
     "goarch": "amd64",
     "cpu": "12th Gen Intel(R) Core(TM) i7-1260P"
   },
   "benchmarks": [
     {
       "name": "BenchmarkContextPack-16",
-      "iterations": 152,
-      "ns_per_op": 7644128,
-      "bytes_per_op": 823210,
-      "allocs_per_op": 2464
+      "iterations": 3,
+      "ns_per_op": 345993667,
+      "bytes_per_op": 1556522,
+      "allocs_per_op": 7041
     },
     {
       "name": "BenchmarkCodeSymbols-16",
-      "iterations": 9400,
-      "ns_per_op": 124337,
-      "bytes_per_op": 149296,
+      "iterations": 9165,
+      "ns_per_op": 114839,
+      "bytes_per_op": 149298,
       "allocs_per_op": 871
     }
   ]

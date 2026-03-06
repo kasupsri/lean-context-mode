@@ -83,6 +83,21 @@ func BuildMCPServerDynamic(rm *RootManager, version string) *mcp.Server {
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
+		Name:        "cache.clean",
+		Description: "Clean cache entries for active or selected workspace root",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in CacheCleanInput) (*mcp.CallToolResult, CacheCleanOutput, error) {
+		svc, _, err := rm.ServiceFor(in.WorkspaceRoot)
+		if err != nil {
+			return toolErrResult(err), CacheCleanOutput{}, nil
+		}
+		out, err := svc.CacheClean(ctx, in)
+		if err != nil {
+			return toolErrResult(err), CacheCleanOutput{}, nil
+		}
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: compactJSON(out)}}}, out, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "workspace.root.get",
 		Description: "Get active workspace root and allowed root boundaries",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in WorkspaceRootGetInput) (*mcp.CallToolResult, WorkspaceRootOutput, error) {

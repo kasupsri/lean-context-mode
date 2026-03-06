@@ -97,6 +97,7 @@ func (p *Pipeline) Pack(ctx context.Context, in ContextPackInput) ContextBundle 
 		CacheHit:         cacheHit,
 		BytesRead:        rr.bytesRead,
 	})
+	p.cache.CleanupAfterRequest()
 	return bundle
 }
 

@@ -141,6 +141,7 @@ func (s *Service) CodeSnippet(_ context.Context, in CodeSnippetInput) (CodeSnipp
 		CacheHit:         pointer != "",
 		BytesRead:        int64(len(content)),
 	})
+	s.cache.CleanupAfterRequest()
 	return CodeSnippetOutput{Snippet: snippet}, nil
 }
 
@@ -164,6 +165,15 @@ func (s *Service) ChangesFocus(ctx context.Context, in ChangesFocusInput) Change
 		BytesRead:        0,
 	})
 	return focus
+}
+
+func (s *Service) CacheClean(_ context.Context, in CacheCleanInput) (CacheCleanOutput, error) {
+	out, err := s.cache.Clean(in.Mode, in.MaxAgeHours)
+	if err != nil {
+		return CacheCleanOutput{}, err
+	}
+	out.Root = s.root
+	return out, nil
 }
 
 func (s *Service) MetricsText() string {

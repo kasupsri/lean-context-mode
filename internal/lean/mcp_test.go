@@ -49,7 +49,7 @@ func TestMCPToolSurface(t *testing.T) {
 		got = append(got, tool.Name)
 	}
 	sort.Strings(got)
-	want := []string{"changes.focus", "code.snippet", "code.symbols", "context.pack", "repo.map"}
+	want := []string{"cache.clean", "changes.focus", "code.snippet", "code.symbols", "context.pack", "repo.map"}
 	if len(got) != len(want) {
 		t.Fatalf("tool count mismatch got=%v want=%v", got, want)
 	}

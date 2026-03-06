@@ -4,7 +4,7 @@
       "command": "cmd",
       "args": [
         "/c",
-        "C:\\Work\\Kasup\\Context Mode\\lean-context-mode\\scripts\\serve.bat"
+        "C:\\path\\to\\lean-context-mode\\scripts\\serve.bat"
       ]
     }
   }
