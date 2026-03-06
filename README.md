@@ -22,6 +22,8 @@ Primary goals:
 - `code.snippet`
 - `repo.map`
 - `changes.focus`
+- `workspace.root.get`
+- `workspace.root.set`
 
 ## Architecture
 
@@ -136,6 +138,9 @@ If `--root` is omitted, the CLI uses:
 2. `LEAN_CONTEXT_MODE_ROOT`
 3. current directory (`.`)
 
+`LCM_ALLOWED_ROOTS` (optional) constrains dynamic root switching for MCP tools.  
+Format: semicolon/comma separated absolute paths.
+
 PowerShell:
 ```powershell
 $env:LCM_ROOT = "C:\Work\Kasup\Context Mode\context-mode"
@@ -153,6 +158,7 @@ lean-context-mode.exe stats
 ### BAT helpers (Windows)
 Included scripts:
 - `scripts\set-root.bat` (persist `LCM_ROOT` with `setx`)
+- `scripts\set-allowed-roots.bat` (persist `LCM_ALLOWED_ROOTS` with `setx`)
 - `scripts\serve.bat` (run server; uses `LCM_ROOT` or current directory)
 - `scripts\stats.bat` (show stats; uses `LCM_ROOT` or current directory)
 
@@ -162,9 +168,22 @@ cd /d "C:\Work\Kasup\Context Mode\lean-context-mode"
 go build -o lean-context-mode.exe .\cmd\lean-context-mode
 
 scripts\set-root.bat "C:\Work\Kasup\Context Mode\context-mode"
+scripts\set-allowed-roots.bat "C:\Work\Kasup\Context Mode\context-mode;C:\Work\Kasup\Context Mode\universal-context-mode"
 scripts\stats.bat
 scripts\serve.bat
 ```
+
+### Dynamic Workspace Path (for AI/tool calls)
+All major tools accept optional `workspace_root`:
+- `context.pack.workspace_root`
+- `code.symbols.workspace_root`
+- `code.snippet.workspace_root`
+- `repo.map.workspace_root`
+- `changes.focus.workspace_root`
+
+You can also switch the server’s active workspace root:
+- `workspace.root.get` returns active + allowed roots
+- `workspace.root.set` updates active root (must be within allowed roots)
 
 ## MCP Client Config Examples
 
@@ -193,6 +212,25 @@ Run tests in Docker (fallback if native test execution has local permission/tool
 ```bash
 docker run --rm -v "$PWD":/src -w /src golang:1.25 go test ./...
 ```
+
+Run synthetic benchmarks (always available):
+
+```bash
+go test -run '^$' -bench Benchmark -benchmem ./internal/lean
+```
+
+## GitHub Pipelines
+
+- `CI` (`.github/workflows/ci.yml`)
+  - gofmt check, `go vet`, `go test`, `go build`
+  - runs on Ubuntu + Windows
+- `Benchmark` (`.github/workflows/benchmark.yml`)
+  - synthetic benchmark on every manual trigger/nightly
+  - uploads benchmark artifacts
+- `Release` (`.github/workflows/release.yml`)
+  - on `v*` tags
+  - builds Windows/Linux/macOS binaries
+  - publishes GitHub release assets + checksums
 
 ## Benchmark Results
 
@@ -228,6 +266,10 @@ docker run --rm \
 
 ```text
 lean-context-mode/
+  .github/workflows/
+    ci.yml
+    benchmark.yml
+    release.yml
   cmd/lean-context-mode/main.go
   internal/lean/
     budgeter.go
@@ -243,11 +285,14 @@ lean-context-mode/
     summarizer.go
     token.go
     types.go
+    root_manager.go
+    perf_bench_test.go
   benchmarks/results.json
   examples/
     cursor.mcp.json
     codex.config.toml
   scripts/
+    set-allowed-roots.bat
     set-root.bat
     serve.bat
     stats.bat

@@ -29,6 +29,9 @@ type benchmarkReport struct {
 }
 
 func TestBenchmarkReferenceRepos(t *testing.T) {
+	if os.Getenv("LCM_RUN_REFERENCE_BENCH") != "1" {
+		t.Skip("set LCM_RUN_REFERENCE_BENCH=1 to run reference-repo benchmark generation")
+	}
 	benchRoot := os.Getenv("LCM_BENCH_ROOT")
 	if benchRoot == "" {
 		if wd, err := os.Getwd(); err == nil {

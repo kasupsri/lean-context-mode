@@ -67,22 +67,17 @@ func runServe(args []string) {
 		os.Exit(1)
 	}
 
-	svc, err := lean.NewService(abs)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "init service:", err)
-		os.Exit(1)
-	}
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := svc.Start(ctx); err != nil {
-		fmt.Fprintln(os.Stderr, "index build failed:", err)
+	rm, err := lean.NewRootManager(ctx, abs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "init root manager:", err)
 		os.Exit(1)
 	}
-	defer svc.Stop()
+	defer rm.Stop()
 
-	if err := lean.RunMCPServer(ctx, svc, version); err != nil {
+	if err := lean.RunMCPServerDynamic(ctx, rm, version); err != nil {
 		fmt.Fprintln(os.Stderr, "server error:", err)
 		os.Exit(1)
 	}

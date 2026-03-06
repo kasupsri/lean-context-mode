@@ -192,33 +192,38 @@ type MetricsSnapshot struct {
 // MCP tool inputs/outputs
 
 type ContextPackInput struct {
-	Query       string   `json:"query" jsonschema:"Natural-language coding query"`
-	FileHints   []string `json:"file_hints,omitempty" jsonschema:"Optional file path hints to bias retrieval"`
-	Language    string   `json:"language,omitempty" jsonschema:"Optional language hint (go, ts, python, etc.)"`
-	TokenBudget int      `json:"token_budget,omitempty" jsonschema:"Max output token budget"`
+	Query         string   `json:"query" jsonschema:"Natural-language coding query"`
+	FileHints     []string `json:"file_hints,omitempty" jsonschema:"Optional file path hints to bias retrieval"`
+	Language      string   `json:"language,omitempty" jsonschema:"Optional language hint (go, ts, python, etc.)"`
+	TokenBudget   int      `json:"token_budget,omitempty" jsonschema:"Max output token budget"`
+	WorkspaceRoot string   `json:"workspace_root,omitempty" jsonschema:"Optional workspace root override (must be inside allowed roots)"`
 }
 
 type CodeSymbolsInput struct {
-	Query      string `json:"query,omitempty" jsonschema:"Optional symbol search query"`
-	File       string `json:"file,omitempty" jsonschema:"Optional file path to filter symbols"`
-	Language   string `json:"language,omitempty" jsonschema:"Optional language filter"`
-	MaxSymbols int    `json:"max_symbols,omitempty" jsonschema:"Max symbols to return"`
+	Query         string `json:"query,omitempty" jsonschema:"Optional symbol search query"`
+	File          string `json:"file,omitempty" jsonschema:"Optional file path to filter symbols"`
+	Language      string `json:"language,omitempty" jsonschema:"Optional language filter"`
+	MaxSymbols    int    `json:"max_symbols,omitempty" jsonschema:"Max symbols to return"`
+	WorkspaceRoot string `json:"workspace_root,omitempty" jsonschema:"Optional workspace root override (must be inside allowed roots)"`
 }
 
 type CodeSnippetInput struct {
-	File      string `json:"file" jsonschema:"File path relative to workspace root"`
-	LineStart int    `json:"line_start" jsonschema:"1-based line start"`
-	LineEnd   int    `json:"line_end" jsonschema:"1-based line end"`
+	File          string `json:"file" jsonschema:"File path relative to workspace root"`
+	LineStart     int    `json:"line_start" jsonschema:"1-based line start"`
+	LineEnd       int    `json:"line_end" jsonschema:"1-based line end"`
+	WorkspaceRoot string `json:"workspace_root,omitempty" jsonschema:"Optional workspace root override (must be inside allowed roots)"`
 }
 
 type RepoMapInput struct {
-	MaxDirectories int `json:"max_directories,omitempty" jsonschema:"Max top directories to include"`
+	MaxDirectories int    `json:"max_directories,omitempty" jsonschema:"Max top directories to include"`
+	WorkspaceRoot  string `json:"workspace_root,omitempty" jsonschema:"Optional workspace root override (must be inside allowed roots)"`
 }
 
 type ChangesFocusInput struct {
-	MaxFiles        int  `json:"max_files,omitempty" jsonschema:"Max changed files to return"`
-	MaxHunksPerFile int  `json:"max_hunks_per_file,omitempty" jsonschema:"Max hunks per file"`
-	IncludeHunks    bool `json:"include_hunks,omitempty" jsonschema:"Whether to include compact hunk lines"`
+	MaxFiles        int    `json:"max_files,omitempty" jsonschema:"Max changed files to return"`
+	MaxHunksPerFile int    `json:"max_hunks_per_file,omitempty" jsonschema:"Max hunks per file"`
+	IncludeHunks    bool   `json:"include_hunks,omitempty" jsonschema:"Whether to include compact hunk lines"`
+	WorkspaceRoot   string `json:"workspace_root,omitempty" jsonschema:"Optional workspace root override (must be inside allowed roots)"`
 }
 
 type CodeSymbolsOutput struct {
@@ -228,4 +233,15 @@ type CodeSymbolsOutput struct {
 
 type CodeSnippetOutput struct {
 	Snippet Snippet `json:"snippet"`
+}
+
+type WorkspaceRootGetInput struct{}
+
+type WorkspaceRootSetInput struct {
+	WorkspaceRoot string `json:"workspace_root" jsonschema:"New active workspace root (must be inside allowed roots)"`
+}
+
+type WorkspaceRootOutput struct {
+	ActiveRoot   string   `json:"active_root"`
+	AllowedRoots []string `json:"allowed_roots"`
 }
