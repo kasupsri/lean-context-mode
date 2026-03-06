@@ -223,6 +223,44 @@ What this script does:
 
 After running it, restart Cursor / VS Code.
 
+## Run Locally (macOS/Linux)
+
+### Prerequisites
+- Go installed and available in `PATH` (`go version`)
+- Git available in `PATH` (for `changes.focus`)
+
+### Build
+```bash
+cd /path/to/lean-context-mode
+go build -o lean-context-mode ./cmd/lean-context-mode
+```
+
+### Run MCP server (stdio)
+```bash
+./lean-context-mode serve --root /path/to/your-workspace
+```
+
+### Local sanity check
+```bash
+./lean-context-mode stats --root /path/to/your-workspace
+```
+
+### Use environment variables
+```bash
+export LCM_ROOT=/path/to/your-workspace
+export LCM_ALLOWED_ROOTS=/path/to/workspace-a,/path/to/workspace-b
+./lean-context-mode serve
+```
+
+### MCP config hint (macOS/Linux)
+For Codex-style TOML config, use the built binary directly:
+
+```toml
+[mcp_servers.lean-context-mode]
+command = "/path/to/lean-context-mode/lean-context-mode"
+args = ["serve", "--root", "/path/to/your-workspace"]
+```
+
 ## Tests
 
 Automated tests cover:

@@ -180,7 +180,7 @@ func copyWorkspace(src, dst string) error {
 		}
 		base := filepath.Base(path)
 		if d.IsDir() {
-			if base == ".git" || base == "node_modules" || base == ".lean-context-mode" {
+			if base == ".git" || base == "node_modules" || base == ".lean-context-mode" || base == ".tmp" || base == ".gocache" || base == ".cache" {
 				return filepath.SkipDir
 			}
 			return os.MkdirAll(filepath.Join(dst, rel), 0o755)
