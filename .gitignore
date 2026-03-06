@@ -1,0 +1,4 @@
+/lean-context-mode
+*.exe
+.lean-context-mode/
+/tmp/

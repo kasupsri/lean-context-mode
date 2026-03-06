@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-03-05T23:54:25Z",
+  "results": [
+    {
+      "repo": "context-mode",
+      "cold_start_ms": 194,
+      "average_request_latency_ms": 43.95,
+      "cache_hit_rate": 0.85,
+      "total_original_tokens": 1013628,
+      "total_optimized_tokens": 35464,
+      "tokens_saved": 978164,
+      "reduction_percent": 96.50128054868256,
+      "requests": 20
+    },
+    {
+      "repo": "universal-context-mode",
+      "cold_start_ms": 37,
+      "average_request_latency_ms": 6.65,
+      "cache_hit_rate": 0.853448275862069,
+      "total_original_tokens": 225504,
+      "total_optimized_tokens": 40296,
+      "tokens_saved": 185208,
+      "reduction_percent": 82.13069391230312,
+      "requests": 20
+    }
+  ]
+}

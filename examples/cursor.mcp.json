@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "lean-context-mode": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "C:\\Work\\Kasup\\Context Mode\\lean-context-mode\\scripts\\serve.bat"
+      ]
+    }
+  }
+}
