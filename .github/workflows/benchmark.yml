@@ -23,19 +23,10 @@ jobs:
           mkdir -p benchmarks
           go test -run '^$' -bench Benchmark -benchmem ./internal/lean | tee benchmarks/ci-benchmark.txt
 
-      - name: Run reference benchmark test (best effort)
-        env:
-          LCM_RUN_REFERENCE_BENCH: "1"
-        run: |
-          set +e
-          go test ./internal/lean -run TestBenchmarkReferenceRepos -v | tee benchmarks/reference-benchmark.txt
-          exit 0
-
       - name: Upload benchmark artifacts
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
           path: |
             benchmarks/ci-benchmark.txt
-            benchmarks/reference-benchmark.txt
             benchmarks/results.json

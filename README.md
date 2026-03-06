@@ -168,7 +168,7 @@ cd /d "C:\Work\Kasup\Context Mode\lean-context-mode"
 go build -o lean-context-mode.exe .\cmd\lean-context-mode
 
 scripts\set-root.bat "C:\Work\Kasup\Context Mode\context-mode"
-scripts\set-allowed-roots.bat "C:\Work\Kasup\Context Mode\context-mode;C:\Work\Kasup\Context Mode\universal-context-mode"
+scripts\set-allowed-roots.bat "C:\Work\Kasup\Context Mode\workspace-a;C:\Work\Kasup\Context Mode\workspace-b"
 scripts\stats.bat
 scripts\serve.bat
 ```
@@ -190,8 +190,23 @@ You can also switch the server’s active workspace root:
 - Cursor example: `examples/cursor.mcp.json`
 - Codex example: `examples/codex.config.toml`
 
-Both examples call `scripts\serve.bat` via `cmd /c`.  
-Set `LCM_ROOT` first (for example with `scripts\set-root.bat`) or pass an explicit root directly when running the binary.
+Both examples call `scripts\serve.bat` via `cmd /c`.
+
+### Install into Cursor + Codex (Windows)
+
+Use the helper script to install MCP config and set workspace root in one step:
+
+```bat
+cd /d "C:\Work\Kasup\Context Mode\lean-context-mode"
+scripts\install-vscode-mcp.bat "C:\Work\Kasup\Context Mode\context-mode"
+```
+
+What this script does:
+- writes `%USERPROFILE%\.cursor\mcp.json` with `lean-context-mode`
+- appends MCP server entry to `%USERPROFILE%\.codex\config.toml` if missing
+- sets `LCM_ROOT` (when you pass a workspace path)
+
+After running it, restart Cursor / VS Code.
 
 ## Tests
 
@@ -234,32 +249,33 @@ go test -run '^$' -bench Benchmark -benchmem ./internal/lean
 
 ## Benchmark Results
 
-Benchmark basis:
-- `context-mode`
-- `universal-context-mode`
+Lean Context Mode synthetic benchmark snapshot (`benchmarks/results.json`):
 
-Generated from `benchmarks/results.json`:
+- `BenchmarkContextPack-16`
+  - iterations: `152`
+  - latency: `7.644 ms/op`
+  - memory: `823,210 B/op`
+  - allocations: `2,464 allocs/op`
+- `BenchmarkCodeSymbols-16`
+  - iterations: `9,400`
+  - latency: `0.124 ms/op`
+  - memory: `149,296 B/op`
+  - allocations: `871 allocs/op`
 
-- `context-mode`
-  - cold start: `194 ms`
-  - avg request latency: `43.95 ms`
-  - cache hit rate: `0.85`
-  - tokens saved: `978,164` (`96.50%`)
-- `universal-context-mode`
-  - cold start: `37 ms`
-  - avg request latency: `6.65 ms`
-  - cache hit rate: `0.85`
-  - tokens saved: `185,208` (`82.13%`)
+Reproduce benchmark (native):
 
-Reproduce benchmark:
+```bash
+go test -run '^$' -bench Benchmark -benchmem ./internal/lean
+```
+
+Reproduce benchmark (Docker):
 
 ```bash
 docker run --rm \
-  -v '/mnt/c/Work/Kasup/Context Mode':/workspace \
-  -w /workspace/lean-context-mode \
-  -e LCM_BENCH_ROOT=/workspace \
+  -v "$PWD":/src \
+  -w /src \
   golang:1.25 \
-  go test ./internal/lean -run TestBenchmarkReferenceRepos -v
+  go test -run '^$' -bench Benchmark -benchmem ./internal/lean
 ```
 
 ## Project Structure
@@ -292,6 +308,7 @@ lean-context-mode/
     cursor.mcp.json
     codex.config.toml
   scripts/
+    install-vscode-mcp.bat
     set-allowed-roots.bat
     set-root.bat
     serve.bat

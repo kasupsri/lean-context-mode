@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -28,19 +29,13 @@ type benchmarkReport struct {
 	Results     []repoBenchmark `json:"results"`
 }
 
-func TestBenchmarkReferenceRepos(t *testing.T) {
-	if os.Getenv("LCM_RUN_REFERENCE_BENCH") != "1" {
-		t.Skip("set LCM_RUN_REFERENCE_BENCH=1 to run reference-repo benchmark generation")
+func TestBenchmarkWorkspaceRepos(t *testing.T) {
+	if os.Getenv("LCM_RUN_BENCH_REPORT") != "1" {
+		t.Skip("set LCM_RUN_BENCH_REPORT=1 to run workspace benchmark report generation")
 	}
-	benchRoot := os.Getenv("LCM_BENCH_ROOT")
-	if benchRoot == "" {
-		if wd, err := os.Getwd(); err == nil {
-			benchRoot = filepath.Clean(filepath.Join(wd, "..", "..", ".."))
-		}
-	}
-	repos := []string{
-		filepath.Clean(filepath.Join(benchRoot, "context-mode")),
-		filepath.Clean(filepath.Join(benchRoot, "universal-context-mode")),
+	repos := parseBenchRepoList(os.Getenv("LCM_BENCH_REPOS"))
+	if len(repos) == 0 {
+		t.Skip("set LCM_BENCH_REPOS to comma/semicolon separated workspace paths")
 	}
 	queries := []ContextPackInput{
 		{Query: "where are mcp tools registered", TokenBudget: 1200},
@@ -128,6 +123,23 @@ func TestBenchmarkReferenceRepos(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("benchmark report written: %s", outPath)
+}
+
+func parseBenchRepoList(raw string) []string {
+	parts := strings.FieldsFunc(raw, func(r rune) bool {
+		return r == ',' || r == ';' || r == '\n' || r == '\r' || r == '\t'
+	})
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if abs, err := filepath.Abs(filepath.Clean(p)); err == nil {
+			out = append(out, abs)
+		}
+	}
+	return out
 }
 
 func findModuleRoot(t *testing.T) string {
