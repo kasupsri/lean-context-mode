@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-06T02:48:48Z",
+  "results": [
+    {
+      "repo": "context-mode",
+      "cold_start_ms": 166,
+      "average_request_latency_ms": 141.55,
+      "cache_hit_rate": 0,
+      "total_original_tokens": 1013628,
+      "total_optimized_tokens": 5292,
+      "tokens_saved": 1008336,
+      "reduction_percent": 99.47791497472446,
+      "requests": 20
+    },
+    {
+      "repo": "universal-context-mode",
+      "cold_start_ms": 42,
+      "average_request_latency_ms": 137.1,
+      "cache_hit_rate": 0,
+      "total_original_tokens": 225504,
+      "total_optimized_tokens": 5380,
+      "tokens_saved": 220124,
+      "reduction_percent": 97.61423300695331,
+      "requests": 20
+    },
+    {
+      "repo": "lean-context-mode",
+      "cold_start_ms": 17,
+      "average_request_latency_ms": 145.55,
+      "cache_hit_rate": 0,
+      "total_original_tokens": 173096,
+      "total_optimized_tokens": 5268,
+      "tokens_saved": 167828,
+      "reduction_percent": 96.95660211674446,
+      "requests": 20
+    }
+  ]
+}
