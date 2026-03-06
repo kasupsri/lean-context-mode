@@ -1,0 +1,11 @@
+*.go text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
+
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.toml text eol=lf
+
+*.bat text eol=crlf
