@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-06T01:50:41Z",
+  "generated_at": "2026-03-06T02:56:14Z",
   "project": "lean-context-mode",
   "benchmark_command": "go test -run=DO_NOT_MATCH -bench Benchmark -benchmem ./internal/lean",
   "environment": {
@@ -10,15 +10,15 @@
   "benchmarks": [
     {
       "name": "BenchmarkContextPack-16",
-      "iterations": 3,
-      "ns_per_op": 345993667,
-      "bytes_per_op": 1556522,
-      "allocs_per_op": 7041
+      "iterations": 25,
+      "ns_per_op": 48166544,
+      "bytes_per_op": 695811,
+      "allocs_per_op": 2667
     },
     {
       "name": "BenchmarkCodeSymbols-16",
-      "iterations": 9165,
-      "ns_per_op": 114839,
+      "iterations": 7567,
+      "ns_per_op": 184029,
       "bytes_per_op": 149298,
       "allocs_per_op": 871
     }

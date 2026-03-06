@@ -1,19 +1,25 @@
 # Lean Context Mode
 
-Lean Context Mode is a universal **Go MCP server** optimized for token-efficient repository context retrieval for AI coding agents.
+Lean Context Mode is a Go MCP server that compresses repository context for AI coding agents.
+It is designed for high token reduction with predictable, traceable outputs.
 
-It implements a deterministic 3-stage pipeline:
+## Why This Is Useful
 
-1. **Context Budgeter**
-2. **Retriever**
-3. **Summarizer**
+- Reduces context payload size before it reaches the model.
+- Keeps long coding sessions stable by minimizing token overhead.
+- Returns compact, source-traceable context bundles instead of large raw dumps.
+- Works across mixed-language repositories.
+- Runs as a local stdio MCP server with no external LLM dependency in the compression pipeline.
 
-Primary goals:
-- minimal tokens
-- minimal latency
-- minimal memory usage
-- high cache reuse
-- language-agnostic repository support
+## Core Pipeline
+
+Lean Context Mode uses a deterministic 3-stage pipeline:
+
+1. Context Budgeter
+2. Retriever
+3. Summarizer
+
+The server prioritizes relevant symbols/snippets/diffs, then aggressively compacts output to keep token usage low.
 
 ## MCP Tool Surface
 
@@ -26,79 +32,73 @@ Primary goals:
 - `workspace.root.get`
 - `workspace.root.set`
 
-## Architecture
+## Performance and Resource Usage
 
-### 1) Context Budgeter
-Input:
-- `query`
-- `file_hints`
-- `language`
-- `token_budget`
+### Synthetic CPU and Memory Profile
+Source: `benchmarks/results.json`  
+Generated: `2026-03-06T02:56:14Z`  
+Environment: `windows/amd64`, CPU `12th Gen Intel(R) Core(TM) i7-1260P`
 
-Deterministic allocation buckets:
-- symbol signatures
-- code snippets
-- dependency edges
-- git diffs
-- configuration slices
+- `BenchmarkContextPack-16`
+  - iterations: `25`
+  - CPU time: `48.167 ms/op`
+  - memory: `695,811 B/op`
+  - allocations: `2,667 allocs/op`
+- `BenchmarkCodeSymbols-16`
+  - iterations: `7,567`
+  - CPU time: `0.184 ms/op`
+  - memory: `149,298 B/op`
+  - allocations: `871 allocs/op`
 
-### 2) Retriever
-Optimizations:
-- symbol-first ranking
-- changed-file priority from git status/diff
-- windowed snippet extraction
-- dependency edge selection
-- config slice selection
-- snippet dedup and cache pointers
+### End-to-End Workspace Savings
+Source: `benchmarks/workspace-results.json`  
+Generated: `2026-03-06T02:48:48Z`
 
-### 3) Summarizer
-- runs only when bundle exceeds budget
-- extractive and traceable (`file:line-range`)
-- cached with keys built from file hash + dependency hash + configuration hash + query
+For `lean-context-mode` repo workload (`20` requests):
 
-## Repository Indexing
+- cold start: `17 ms`
+- average request latency: `145.55 ms`
+- original tokens: `173,096`
+- optimized tokens: `5,268`
+- tokens saved: `167,828`
+- reduction: `96.96%`
 
-- startup full index
-- incremental updates via fsnotify watcher
-- language-agnostic regex heuristics for symbols/imports/calls
-- relationship maps for imports/dependents/tests
-- lightweight ecosystem signals
-  - .NET: solution/DI/EF patterns
-  - React/TS: hooks/routing/API client patterns
+This is why the tool is useful in practice: it cuts context volume by ~97% on this benchmark while keeping outputs grounded in repo sources.
 
-## Security
+## Security Model
 
-- strict workspace-root path validation
-- tool input sanitization
-- no exposed shell execution tool
-- file access is blocked outside workspace root
+- Strict workspace-root path validation.
+- Tool input sanitization.
+- No shell execution MCP tool exposed.
+- File access blocked outside configured workspace roots.
 
-## Observability and Metrics
+## Cache Behavior
 
-Persisted under:
+- Cache is memory-only (no cache file reads/writes).
+- Default mode is `ephemeral`: cache cleared after each request.
+- Optional bounded mode:
+  - `LCM_CACHE_MODE=bounded`
+  - optional `LCM_CACHE_MAX_AGE_HOURS` (default `168`)
+
+Use `cache.clean` MCP tool when you need explicit cleanup:
+
+- `mode: "expired"` (default)
+- `mode: "all"`
+- optional `max_age_hours`
+
+## Observability
+
+Metrics are persisted under:
+
 - `.lean-context-mode/metrics.json`
 
-Tracked:
+Tracked metrics include:
+
 - requests processed
 - latency
 - cache hits/misses
 - bytes read
 - tokens returned/saved
-
-Cache lifecycle:
-- cache is memory-only (no cache file reads/writes)
-- default mode is `ephemeral`: cache is cleared after each request to stay lightweight
-- optional bounded mode:
-  - set `LCM_CACHE_MODE=bounded`
-  - entries are still memory-only, but age-pruned on startup and periodically during writes
-  - default max age in bounded mode: `168` hours (7 days)
-  - override with `LCM_CACHE_MAX_AGE_HOURS` (for example `72`), or set `0` to disable age pruning
-
-MCP cache cleanup tool:
-- call `cache.clean` with:
-  - `mode: "expired"` (default) to delete stale entries
-  - `mode: "all"` to clear the cache fully
-  - optional `max_age_hours` for `expired` mode
 
 Stats command:
 
@@ -106,154 +106,71 @@ Stats command:
 lean-context-mode stats --root /path/to/repo
 ```
 
-Outputs:
-- daily token savings
-- total tokens saved
-- average reduction percentage
+## Run Locally (Windows)
 
-## Run Locally (Windows Native)
+### Build
 
-### Prerequisites
-- Go installed and available in `PATH` (`go version`)
-- Git available in `PATH` (for `changes.focus`)
+PowerShell:
 
-### Build (PowerShell)
 ```powershell
 cd "C:\path\to\lean-context-mode"
 go build -o lean-context-mode.exe .\cmd\lean-context-mode
 ```
 
-### Build (cmd.exe)
+cmd.exe:
+
 ```bat
 cd /d "C:\path\to\lean-context-mode"
 go build -o lean-context-mode.exe .\cmd\lean-context-mode
 ```
 
-### Local sanity check
-```powershell
-.\lean-context-mode.exe stats --root "C:\path\to\lean-context-mode"
-```
+### Run server
 
-### Run MCP server (stdio)
 ```powershell
 .\lean-context-mode.exe serve --root "C:\path\to\your-workspace"
 ```
 
-`serve` is a stdio MCP server and is intended to be started by Cursor/Codex/Claude MCP.  
-If stdin closes, the process exits.
+### Stats
 
-### Run without building
 ```powershell
-go run .\cmd\lean-context-mode serve --root "C:\path\to\your-workspace"
+.\lean-context-mode.exe stats --root "C:\path\to\your-workspace"
 ```
-
-### Use environment variable for root
-If `--root` is omitted, the CLI uses:
-1. `LCM_ROOT`
-2. `LEAN_CONTEXT_MODE_ROOT`
-3. current directory (`.`)
-
-`LCM_ALLOWED_ROOTS` (optional) constrains dynamic root switching for MCP tools.  
-Format: semicolon/comma separated absolute paths.
-
-PowerShell:
-```powershell
-$env:LCM_ROOT = "C:\path\to\your-workspace"
-.\lean-context-mode.exe serve
-.\lean-context-mode.exe stats
-```
-
-cmd.exe:
-```bat
-set LCM_ROOT=C:\path\to\your-workspace
-lean-context-mode.exe serve
-lean-context-mode.exe stats
-```
-
-### BAT helpers (Windows)
-Included scripts:
-- `scripts\set-root.bat` (persist `LCM_ROOT` with `setx`)
-- `scripts\set-allowed-roots.bat` (persist `LCM_ALLOWED_ROOTS` with `setx`)
-- `scripts\serve.bat` (run server; uses `LCM_ROOT` or current directory)
-- `scripts\stats.bat` (show stats; uses `LCM_ROOT` or current directory)
-
-Examples:
-```bat
-cd /d "C:\path\to\lean-context-mode"
-go build -o lean-context-mode.exe .\cmd\lean-context-mode
-
-scripts\set-root.bat "C:\path\to\workspace-a"
-scripts\set-allowed-roots.bat "C:\path\to\workspace-a;C:\path\to\workspace-b"
-scripts\stats.bat
-scripts\serve.bat
-```
-
-### Dynamic Workspace Path (for AI/tool calls)
-All major tools accept optional `workspace_root`:
-- `context.pack.workspace_root`
-- `code.symbols.workspace_root`
-- `code.snippet.workspace_root`
-- `repo.map.workspace_root`
-- `changes.focus.workspace_root`
-
-You can also switch the server’s active workspace root:
-- `workspace.root.get` returns active + allowed roots
-- `workspace.root.set` updates active root (must be within allowed roots)
-
-## MCP Client Config Examples
-
-- Cursor example: `examples/cursor.mcp.json`
-- Codex example: `examples/codex.config.toml`
-
-Both examples call `scripts\serve.bat` via `cmd /c`.
-
-### Install into Cursor + Codex (Windows)
-
-Use the helper script to install MCP config and set workspace root in one step:
-
-```bat
-cd /d "C:\path\to\lean-context-mode"
-scripts\install-vscode-mcp.bat "C:\path\to\your-workspace"
-```
-
-What this script does:
-- writes `%USERPROFILE%\.cursor\mcp.json` with `lean-context-mode`
-- appends MCP server entry to `%USERPROFILE%\.codex\config.toml` if missing
-- sets `LCM_ROOT` (when you pass a workspace path)
-
-After running it, restart Cursor / VS Code.
 
 ## Run Locally (macOS/Linux)
 
-### Prerequisites
-- Go installed and available in `PATH` (`go version`)
-- Git available in `PATH` (for `changes.focus`)
-
 ### Build
+
 ```bash
 cd /path/to/lean-context-mode
 go build -o lean-context-mode ./cmd/lean-context-mode
 ```
 
-### Run MCP server (stdio)
+### Run server
+
 ```bash
 ./lean-context-mode serve --root /path/to/your-workspace
 ```
 
-### Local sanity check
+### Stats
+
 ```bash
 ./lean-context-mode stats --root /path/to/your-workspace
 ```
 
-### Use environment variables
-```bash
-export LCM_ROOT=/path/to/your-workspace
-export LCM_ALLOWED_ROOTS=/path/to/workspace-a,/path/to/workspace-b
-./lean-context-mode serve
-```
+## Environment Variables
 
-### MCP config hint (macOS/Linux)
-For Codex-style TOML config, use the built binary directly:
+- `LCM_ROOT`: default root if `--root` is omitted
+- `LEAN_CONTEXT_MODE_ROOT`: fallback root env var
+- `LCM_ALLOWED_ROOTS`: allowed roots list (comma/semicolon separated)
+- `LCM_CACHE_MODE`: `ephemeral` (default) or `bounded`
+- `LCM_CACHE_MAX_AGE_HOURS`: max age for bounded mode
+
+## MCP Config Examples
+
+- Cursor example: `examples/cursor.mcp.json`
+- Codex example: `examples/codex.config.toml`
+
+For macOS/Linux TOML config:
 
 ```toml
 [mcp_servers.lean-context-mode]
@@ -261,84 +178,32 @@ command = "/path/to/lean-context-mode/lean-context-mode"
 args = ["serve", "--root", "/path/to/your-workspace"]
 ```
 
-## Tests
+## Test and Benchmark
 
-Automated tests cover:
-- token budgeting determinism
-- retrieval/context pack behavior
-- cache behavior
-- MCP tool interface surface
-
-Run tests (native Go):
+Run tests:
 
 ```bash
 go test ./...
 ```
 
-Run tests in Docker (fallback if native test execution has local permission/toolchain issues):
-
-```bash
-docker run --rm -v "$PWD":/src -w /src golang:1.25 go test ./...
-```
-
-Run synthetic benchmarks (always available):
+Run synthetic benchmark:
 
 ```bash
 go test -run=DO_NOT_MATCH -bench Benchmark -benchmem ./internal/lean
 ```
 
-## GitHub Pipelines
-
-- `CI` (`.github/workflows/ci.yml`)
-  - gofmt check, `go vet`, `go test`, `go build`
-  - runs on Ubuntu + Windows
-- `Benchmark` (`.github/workflows/benchmark.yml`)
-  - synthetic benchmark on every manual trigger/nightly
-  - uploads benchmark artifacts
-- `Release` (`.github/workflows/release.yml`)
-  - on `v*` tags
-  - builds Windows/Linux/macOS binaries
-  - publishes GitHub release assets + checksums
-
-## Benchmark Results
-
-Lean Context Mode synthetic benchmark snapshot (`benchmarks/results.json`):
-
-- `BenchmarkContextPack-16`
-  - iterations: `3`
-  - latency: `345.994 ms/op`
-  - memory: `1,556,522 B/op`
-  - allocations: `7,041 allocs/op`
-- `BenchmarkCodeSymbols-16`
-  - iterations: `9,165`
-  - latency: `0.115 ms/op`
-  - memory: `149,298 B/op`
-  - allocations: `871 allocs/op`
-
-Reproduce benchmark (native):
+Run workspace benchmark report:
 
 ```bash
-go test -run=DO_NOT_MATCH -bench Benchmark -benchmem ./internal/lean
-```
-
-Reproduce benchmark (Docker):
-
-```bash
-docker run --rm \
-  -v "$PWD":/src \
-  -w /src \
-  golang:1.25 \
-  go test -run=DO_NOT_MATCH -bench Benchmark -benchmem ./internal/lean
+LCM_RUN_BENCH_REPORT=1 \
+LCM_BENCH_REPOS="/path/repo-a,/path/repo-b" \
+go test -run TestBenchmarkWorkspaceRepos ./internal/lean -v
 ```
 
 ## Project Structure
 
 ```text
 lean-context-mode/
-  .github/workflows/
-    ci.yml
-    benchmark.yml
-    release.yml
   cmd/lean-context-mode/main.go
   internal/lean/
     budgeter.go
@@ -349,17 +214,18 @@ lean-context-mode/
     metrics.go
     pipeline.go
     retriever.go
+    root_manager.go
     security.go
     service.go
     summarizer.go
     token.go
     types.go
-    root_manager.go
-    perf_bench_test.go
-  benchmarks/results.json
+  benchmarks/
+    results.json
+    workspace-results.json
   examples/
-    cursor.mcp.json
     codex.config.toml
+    cursor.mcp.json
   scripts/
     install-vscode-mcp.bat
     set-allowed-roots.bat
