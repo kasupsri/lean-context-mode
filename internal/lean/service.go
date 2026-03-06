@@ -119,8 +119,7 @@ func (s *Service) CodeSnippet(_ context.Context, in CodeSnippetInput) (CodeSnipp
 		return CodeSnippetOutput{}, err
 	}
 	content := strings.Join(lines, "\n")
-	id := s.cache.PutSnippet(content, fmt.Sprintf("%s:%d", rel, in.LineStart))
-	pointer, _ := s.cache.GetSnippetPointer(content)
+	id, pointer, hit := s.cache.PutSnippetWithPointer(content, fmt.Sprintf("%s:%d", rel, in.LineStart))
 	snippet := Snippet{
 		ID:             id,
 		File:           rel,
@@ -128,7 +127,9 @@ func (s *Service) CodeSnippet(_ context.Context, in CodeSnippetInput) (CodeSnipp
 		LineEnd:        in.LineEnd,
 		Content:        content,
 		EstimatedToken: EstimateTokens(content),
-		CachedPointer:  pointer,
+	}
+	if hit {
+		snippet.CachedPointer = pointer
 	}
 	s.metrics.Record(RequestMetric{
 		Date:             time.Now().Format("2006-01-02"),
@@ -138,7 +139,7 @@ func (s *Service) CodeSnippet(_ context.Context, in CodeSnippetInput) (CodeSnipp
 		OptimizedTokens:  snippet.EstimatedToken,
 		TokensSaved:      0,
 		SnippetsReturned: 1,
-		CacheHit:         pointer != "",
+		CacheHit:         hit,
 		BytesRead:        int64(len(content)),
 	})
 	s.cache.CleanupAfterRequest()

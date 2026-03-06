@@ -199,8 +199,7 @@ func (r *Retriever) collectSnippets(symbols []SymbolRef, terms []string, changed
 			continue
 		}
 		seen[content] = struct{}{}
-		id := r.cache.PutSnippet(content, fmt.Sprintf("%s:%d", sym.File, sym.LineStart))
-		pointer, hit := r.cache.GetSnippetPointer(content)
+		id, pointer, hit := r.cache.PutSnippetWithPointer(content, fmt.Sprintf("%s:%d", sym.File, sym.LineStart))
 		s := Snippet{
 			ID:             id,
 			File:           sym.File,

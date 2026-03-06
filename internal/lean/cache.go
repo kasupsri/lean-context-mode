@@ -3,10 +3,8 @@ package lean
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,6 +17,7 @@ const (
 	defaultAutoPruneEvery   = 15 * time.Minute
 	cacheModeEphemeral      = "ephemeral"
 	cacheModeBounded        = "bounded"
+	cacheBackendMemory      = "memory://cache"
 )
 
 type snippetCacheEntry struct {
@@ -46,7 +45,6 @@ type cacheState struct {
 
 type CacheStore struct {
 	mu             sync.RWMutex
-	path           string
 	state          cacheState
 	maxSnippets    int
 	maxSummaries   int
@@ -59,13 +57,8 @@ type CacheStore struct {
 	misses int
 }
 
-func NewCacheStore(root string) (*CacheStore, error) {
-	cacheDir := filepath.Join(root, ".lean-context-mode", "cache")
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
-		return nil, err
-	}
+func NewCacheStore(_ string) (*CacheStore, error) {
 	cs := &CacheStore{
-		path:           filepath.Join(cacheDir, "cache.json"),
 		state:          cacheState{Snippets: map[string]snippetCacheEntry{}, Summaries: map[string]summaryCacheEntry{}},
 		maxSnippets:    2000,
 		maxSummaries:   3000,
@@ -73,21 +66,14 @@ func NewCacheStore(root string) (*CacheStore, error) {
 		autoPruneEvery: defaultAutoPruneEvery,
 		mode:           cacheModeFromEnv(),
 	}
-	_ = cs.load()
 	cs.mu.Lock()
 	now := time.Now().UTC()
 	cs.lastAutoPrune = now
 	if cs.mode == cacheModeEphemeral {
-		if len(cs.state.Snippets) > 0 || len(cs.state.Summaries) > 0 {
-			cs.state.Snippets = map[string]snippetCacheEntry{}
-			cs.state.Summaries = map[string]summaryCacheEntry{}
-			cs.saveLocked()
-		}
+		cs.state.Snippets = map[string]snippetCacheEntry{}
+		cs.state.Summaries = map[string]summaryCacheEntry{}
 	} else {
-		removedSnippets, removedSummaries := cs.pruneExpiredLocked(now, cs.maxAge)
-		if removedSnippets > 0 || removedSummaries > 0 {
-			cs.saveLocked()
-		}
+		cs.pruneExpiredLocked(now, cs.maxAge)
 	}
 	cs.mu.Unlock()
 	return cs, nil
@@ -120,41 +106,17 @@ func cacheMaxAgeFromEnv() time.Duration {
 	return time.Duration(n) * time.Hour
 }
 
-func (c *CacheStore) load() error {
-	b, err := os.ReadFile(c.path)
-	if err != nil {
-		return err
-	}
-	var st cacheState
-	if err := json.Unmarshal(b, &st); err != nil {
-		return err
-	}
-	if st.Snippets == nil {
-		st.Snippets = map[string]snippetCacheEntry{}
-	}
-	if st.Summaries == nil {
-		st.Summaries = map[string]summaryCacheEntry{}
-	}
-	c.mu.Lock()
-	c.state = st
-	c.mu.Unlock()
-	return nil
-}
-
-func (c *CacheStore) saveLocked() {
-	b, err := json.MarshalIndent(c.state, "", "  ")
-	if err != nil {
-		return
-	}
-	_ = os.WriteFile(c.path, b, 0o644)
-}
-
 func shortHash(input string) string {
 	h := sha256.Sum256([]byte(input))
 	return hex.EncodeToString(h[:])[:16]
 }
 
 func (c *CacheStore) PutSnippet(content, source string) string {
+	id, _, _ := c.PutSnippetWithPointer(content, source)
+	return id
+}
+
+func (c *CacheStore) PutSnippetWithPointer(content, source string) (string, string, bool) {
 	h := shortHash(content)
 	now := time.Now().UTC()
 	c.mu.Lock()
@@ -166,8 +128,7 @@ func (c *CacheStore) PutSnippet(content, source string) string {
 		entry.Hits++
 		c.state.Snippets[h] = entry
 		c.hits++
-		c.saveLocked()
-		return entry.ID
+		return entry.ID, "cache://snippet/" + entry.ID, true
 	}
 	entry = snippetCacheEntry{
 		ID:         "snippet_" + h,
@@ -181,8 +142,7 @@ func (c *CacheStore) PutSnippet(content, source string) string {
 	c.state.Snippets[h] = entry
 	c.misses++
 	trimSnippets(c.state.Snippets, c.maxSnippets)
-	c.saveLocked()
-	return entry.ID
+	return entry.ID, "cache://snippet/" + entry.ID, false
 }
 
 func (c *CacheStore) GetSnippetPointer(content string) (string, bool) {
@@ -198,7 +158,6 @@ func (c *CacheStore) GetSnippetPointer(content string) (string, bool) {
 	entry.Hits++
 	c.state.Snippets[h] = entry
 	c.hits++
-	c.saveLocked()
 	return "cache://snippet/" + entry.ID, true
 }
 
@@ -214,7 +173,6 @@ func (c *CacheStore) PutSummary(key string, summaries []TraceSummary) {
 		AccessedAt: now,
 	}
 	trimSummaries(c.state.Summaries, c.maxSummaries)
-	c.saveLocked()
 }
 
 func (c *CacheStore) GetSummary(key string) ([]TraceSummary, bool) {
@@ -229,7 +187,6 @@ func (c *CacheStore) GetSummary(key string) ([]TraceSummary, bool) {
 	entry.AccessedAt = time.Now().UTC()
 	c.state.Summaries[key] = entry
 	c.hits++
-	c.saveLocked()
 	out := make([]TraceSummary, len(entry.Summaries))
 	copy(out, entry.Summaries)
 	return out, true
@@ -264,7 +221,7 @@ func (c *CacheStore) Clean(mode string, maxAgeHours int) (CacheCleanOutput, erro
 	out := CacheCleanOutput{
 		Mode:      normalizedMode,
 		CleanedAt: now,
-		CacheFile: c.path,
+		CacheFile: cacheBackendMemory,
 	}
 
 	switch normalizedMode {
@@ -289,9 +246,6 @@ func (c *CacheStore) Clean(mode string, maxAgeHours int) (CacheCleanOutput, erro
 
 	out.SnippetsRemaining = len(c.state.Snippets)
 	out.SummariesRemaining = len(c.state.Summaries)
-	if out.SnippetsRemoved > 0 || out.SummariesRemoved > 0 || normalizedMode == "all" {
-		c.saveLocked()
-	}
 	return out, nil
 }
 
@@ -320,7 +274,6 @@ func (c *CacheStore) CleanupAfterRequest() {
 	}
 	c.state.Snippets = map[string]snippetCacheEntry{}
 	c.state.Summaries = map[string]summaryCacheEntry{}
-	c.saveLocked()
 }
 
 func (c *CacheStore) pruneExpiredLocked(now time.Time, maxAge time.Duration) (int, int) {

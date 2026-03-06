@@ -76,7 +76,6 @@ Optimizations:
 ## Observability and Metrics
 
 Persisted under:
-- `.lean-context-mode/cache/cache.json`
 - `.lean-context-mode/metrics.json`
 
 Tracked:
@@ -87,10 +86,11 @@ Tracked:
 - tokens returned/saved
 
 Cache lifecycle:
+- cache is memory-only (no cache file reads/writes)
 - default mode is `ephemeral`: cache is cleared after each request to stay lightweight
 - optional bounded mode:
   - set `LCM_CACHE_MODE=bounded`
-  - entries are then age-pruned on startup and periodically during writes
+  - entries are still memory-only, but age-pruned on startup and periodically during writes
   - default max age in bounded mode: `168` hours (7 days)
   - override with `LCM_CACHE_MAX_AGE_HOURS` (for example `72`), or set `0` to disable age pruning
 
